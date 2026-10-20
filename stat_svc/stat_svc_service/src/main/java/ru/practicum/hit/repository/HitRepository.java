@@ -11,11 +11,11 @@ import java.util.List;
 public interface HitRepository extends JpaRepository<Hit, Long> {
 
     @Query("SELECT new ru.practicum.dto.ViewStatsDto(h.app, h.uri, COUNT(h)) FROM Hit AS h WHERE h.timestamp BETWEEN ?1 AND ?2" +
-            " AND (?3 IS NULL OR h.uri in ?3) GROUP BY h.app, h.uri")
+            " AND (?3 IS NULL OR h.uri in ?3) GROUP BY h.app, h.uri ORDER BY COUNT(h) DESC")
     List<ViewStatsDto> findStats(LocalDateTime start, LocalDateTime end, List<String> uris);
 
     @Query("SELECT new ru.practicum.dto.ViewStatsDto(h.app, h.uri, COUNT(DISTINCT h.ip)) FROM Hit AS h WHERE h.timestamp BETWEEN ?1 AND ?2" +
-            " AND (?3 IS NULL OR h.uri in ?3) GROUP BY h.app, h.uri")
+            " AND (?3 IS NULL OR h.uri in ?3) GROUP BY h.app, h.uri ORDER BY COUNT(DISTINCT h.ip) DESC")
     List<ViewStatsDto> findUniqueStats(LocalDateTime start, LocalDateTime end, List<String> uris);
 
 

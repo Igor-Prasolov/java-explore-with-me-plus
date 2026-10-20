@@ -1,5 +1,5 @@
 services:
-  stat_svc:
+  stats-server:
     build: stat_svc/stat_svc_service
     image: stat_svc_service
     container_name: stat_svc

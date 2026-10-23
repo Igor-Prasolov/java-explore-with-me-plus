@@ -1,15 +1,191 @@
 package ru.practicum.request.service;
 
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.event.entity.Event;
+import ru.practicum.event.entity.State;
+import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidateException;
+import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.request.dto.ParticipationRequestDto;
+import ru.practicum.request.entity.Request;
+import ru.practicum.request.entity.RequestStatus;
+import ru.practicum.request.entity.StatusForUpdateRequest;
+import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.repository.RequestRepository;
+import ru.practicum.user.entity.User;
+import ru.practicum.user.repository.UserRepository;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RequestServiceImpl implements RequestService {
 
     private final RequestRepository requestRepository;
+    private final UserRepository userRepository;
+    private final EventRepository eventRepository;
+
+    @Override
+    public List<ParticipationRequestDto> getUserRequests(Long userId) {
+        log.info("Получение заявок пользователя id={}", userId);
+        checkUserExists(userId);
+        List<Request> requests = requestRepository.findAllByRequesterId(userId);
+        return RequestMapper.toDtoList(requests);
+    }
+
+    @Override
+    @Transactional
+    public ParticipationRequestDto createRequest(Long userId, Long eventId) {
+        log.info("Создание заявки: user={}, event={}", userId, eventId);
+        User user = getUserOrThrow(userId);
+        Event event = getEventOrThrow(eventId);
+
+        if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
+            throw new ValidateException("Пользователь с id=" + userId + " уже подал заявку на событие с id=" + eventId);
+        }
+
+        if (event.getInitiator().getId().equals(userId)) {
+            throw new ValidateException("Инициатор события не может подавать заявку на участие в своём событии");
+        }
+
+        if (!State.PUBLISHED.equals(event.getState())) {
+            throw new ValidateException("Нельзя участвовать в неопубликованном событии");
+        }
+
+        long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
+            throw new ValidateException("У события достигнут лимит участников");
+        }
+
+        RequestStatus status = RequestStatus.PENDING;
+        if (!Boolean.TRUE.equals(event.getRequestModeration()) || event.getParticipantLimit() == 0) {
+            status = RequestStatus.CONFIRMED;
+        }
+
+        Request request = new Request();
+        request.setCreated(LocalDateTime.now());
+        request.setEvent(event);
+        request.setRequester(user);
+        request.setStatus(status);
+
+        Request saved = requestRepository.save(request);
+        return RequestMapper.toDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public ParticipationRequestDto cancelRequest(Long userId, Long requestId) {
+        log.info("Отмена заявки id={} пользователем id={}", requestId, userId);
+        checkUserExists(userId);
+
+        Request request = requestRepository.findByIdAndRequesterId(requestId, userId)
+                .orElseThrow(() -> new NotFoundException("Заявка с id=" + requestId + " у пользователя id=" + userId + " не найдена"));
+
+        request.setStatus(RequestStatus.CANCELED);
+        Request updated = requestRepository.save(request);
+        return RequestMapper.toDto(updated);
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        log.info("Получение заявок на событие id={} организатором id={}", eventId, userId);
+        checkUserExists(userId);
+        Event event = getEventOrThrow(eventId);
+
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new ValidateException("Пользователь id=" + userId + " не является инициатором события id=" + eventId);
+        }
+
+        List<Request> requests = requestRepository.findAllByEventId(eventId);
+        return RequestMapper.toDtoList(requests);
+    }
+
+    @Override
+    @Transactional
+    public EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId,
+                                                                    EventRequestStatusUpdateRequest updateRequest) {
+        log.info("Обновление статусов заявок на событие id={} организатором id={}", eventId, userId);
+        checkUserExists(userId);
+        Event event = getEventOrThrow(eventId);
+
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new ValidateException("Пользователь id=" + userId + " не является инициатором события id=" + eventId);
+        }
+
+        List<ParticipationRequestDto> confirmedList = new ArrayList<>();
+        List<ParticipationRequestDto> rejectedList = new ArrayList<>();
+
+        if (!Boolean.TRUE.equals(event.getRequestModeration()) || event.getParticipantLimit() == 0) {
+            return new EventRequestStatusUpdateResult(confirmedList, rejectedList);
+        }
+
+        long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (StatusForUpdateRequest.CONFIRMED.equals(updateRequest.getStatus())
+                && event.getParticipantLimit() > 0
+                && confirmedCount >= event.getParticipantLimit()) {
+            throw new ValidateException("The participant limit has been reached");
+        }
+
+        List<Request> requests = requestRepository.findAllByEventIdAndIdIn(eventId, updateRequest.getRequestIds());
+
+        for (Request request : requests) {
+            if (!RequestStatus.PENDING.equals(request.getStatus())) {
+                throw new ValidateException("Статус можно изменить только у заявок, находящихся в состоянии ожидания");
+            }
+
+            if (StatusForUpdateRequest.CONFIRMED.equals(updateRequest.getStatus())) {
+                if (confirmedCount < event.getParticipantLimit()) {
+                    request.setStatus(RequestStatus.CONFIRMED);
+                    confirmedCount++;
+                    confirmedList.add(RequestMapper.toDto(request));
+                } else {
+                    request.setStatus(RequestStatus.REJECTED);
+                    rejectedList.add(RequestMapper.toDto(request));
+                }
+            } else if (StatusForUpdateRequest.REJECTED.equals(updateRequest.getStatus())) {
+                request.setStatus(RequestStatus.REJECTED);
+                rejectedList.add(RequestMapper.toDto(request));
+            }
+        }
+
+        requestRepository.saveAll(requests);
+
+        if (confirmedCount >= event.getParticipantLimit()) {
+            List<Request> pendingRequests = requestRepository.findAllByEventId(eventId).stream()
+                    .filter(r -> RequestStatus.PENDING.equals(r.getStatus()))
+                    .toList();
+            for (Request r : pendingRequests) {
+                r.setStatus(RequestStatus.REJECTED);
+                rejectedList.add(RequestMapper.toDto(r));
+            }
+            requestRepository.saveAll(pendingRequests);
+        }
+
+        return new EventRequestStatusUpdateResult(confirmedList, rejectedList);
+    }
+
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id=" + userId + " не найден"));
+    }
+
+    private void checkUserExists(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
+        }
+    }
+
+    private Event getEventOrThrow(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
+    }
 }

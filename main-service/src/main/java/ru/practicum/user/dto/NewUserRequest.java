@@ -1,5 +1,6 @@
 package ru.practicum.user.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -8,7 +9,8 @@ import lombok.Data;
 public class NewUserRequest { // это приходит из контроллеров пост на создание юзера
 
     @NotBlank
-    @Size(max = 254, min = 2)
+    @Size(max = 254, min = 6)
+    @Email
     private String email;
 
     @NotBlank

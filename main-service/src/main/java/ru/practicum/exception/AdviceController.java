@@ -65,6 +65,12 @@ public class AdviceController extends ResponseEntityExceptionHandler {
         return badRequest(errors, e.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException e) {
+        log.warn("Incorrect request: {}", e.getMessage());
+        return response(HttpStatus.BAD_REQUEST, REASON_BAD_REQUEST, e.getMessage(), List.of());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception e) {
         log.error("Unexpected error", e);

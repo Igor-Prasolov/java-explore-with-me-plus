@@ -33,14 +33,13 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDto> getCategories(Integer from, Integer size){
-        PageRequest pageRequest = PageRequest.of(from / size, size);
-        Page<Category> categoryPage = categoryRepository.findAll(pageRequest);
+    public List<CategoryDto> getCategories(Pageable pageable){
+        Page<Category> categoryPage = categoryRepository.findAll(pageable);
         return categoryPage.map(categoryMapper::toCategoryDto).getContent();
     }
 
     @Override
-    public CategoryDto getCategoryById(Long categoryId, Integer from, Integer size) {
+    public CategoryDto getCategoryById(Long categoryId, Pageable pageable) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException("Категория с id = " + categoryId + " не найдена"));
         return categoryMapper.toCategoryDto(category);

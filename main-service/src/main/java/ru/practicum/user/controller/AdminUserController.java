@@ -18,7 +18,9 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 public class AdminUserController {
+
     private final UserService userService;
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserDto registerUser(@Valid @RequestBody NewUserRequest userRequest) {

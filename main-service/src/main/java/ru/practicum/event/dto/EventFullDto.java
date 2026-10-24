@@ -31,7 +31,7 @@ public class EventFullDto {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishedOn;
 
-    private Boolean requestModeration = true; //дефолт
+    private Boolean requestModeration = true;
     private State state;
     private String title;
     private Long views;

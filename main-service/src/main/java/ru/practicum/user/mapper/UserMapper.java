@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.practicum.user.dto.NewUserRequest;
 import ru.practicum.user.dto.UserDto;
+import ru.practicum.user.dto.UserShortDto;
 import ru.practicum.user.entity.User;
 
 @Mapper(componentModel = "spring")
@@ -13,4 +14,6 @@ public interface UserMapper {
     User toUser(NewUserRequest request);
 
     UserDto toUserDto(User user);
+
+    UserShortDto toUserShortDto(User user);
 }

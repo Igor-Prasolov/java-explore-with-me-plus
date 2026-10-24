@@ -28,14 +28,12 @@ public class NewEventDto { // приходит от пользователя п�
     private LocalDateTime eventDate;
 
     @NotNull
-    @Valid // спринг залезет в класс локации и посмотрит там два аннотированых поля
+    @Valid
     private Location location;
 
-    private Boolean paid = false; // по дефолту, что бы не присваивать в мапере
-
-    private Integer participantLimit = 0; // тоже самое
-
-    private Boolean requestModeration = true; // тоже самое
+    private Boolean paid = false;
+    private Integer participantLimit = 0;
+    private Boolean requestModeration = true;
 
     @NotBlank
     @Size(min = 3, max = 120)

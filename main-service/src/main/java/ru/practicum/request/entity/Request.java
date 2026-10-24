@@ -2,14 +2,19 @@ package ru.practicum.request.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import ru.practicum.event.entity.Event;
 import ru.practicum.user.entity.User;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
-@Table(name = "requests")
+@Table(name = "requests", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_request_event_requester", columnNames = {"event_id", "requester_id"})
+})
 public class Request {
 
     @Id
@@ -27,7 +32,8 @@ public class Request {
     @Column(name = "created")
     private LocalDateTime created;
 
-//    @Enumerated(EnumType.STRING)
-//    по идее надо сделать enum класс
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 50)
+    private RequestStatus status;
 
 }

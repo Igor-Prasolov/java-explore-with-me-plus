@@ -160,9 +160,7 @@ public class RequestServiceImpl implements RequestService {
         requestRepository.saveAll(requests);
 
         if (confirmedCount >= event.getParticipantLimit()) {
-            List<Request> pendingRequests = requestRepository.findAllByEventId(eventId).stream()
-                    .filter(r -> RequestStatus.PENDING.equals(r.getStatus()))
-                    .toList();
+            List<Request> pendingRequests = requestRepository.findAllByEventIdAndStatus(eventId, RequestStatus.PENDING);
             for (Request r : pendingRequests) {
                 r.setStatus(RequestStatus.REJECTED);
                 rejectedList.add(RequestMapper.toDto(r));

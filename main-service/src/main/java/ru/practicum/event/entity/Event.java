@@ -1,13 +1,16 @@
 package ru.practicum.event.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import ru.practicum.category.entity.Category;
 import ru.practicum.user.entity.User;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "events")
 public class Event {
@@ -42,12 +45,14 @@ public class Event {
     @JoinColumn(name = "initiator_id", nullable = false)
     private User initiator;
 
+    @CreationTimestamp
     @Column(name = "created_on", nullable = false)
-    private LocalDateTime created;
+    private LocalDateTime createdOn;
 
     @Column(name = "published_on")
-    private LocalDateTime published;
+    private LocalDateTime publishedOn;
 
+    @Column(name = "event_state", nullable = false)
     @Enumerated(EnumType.STRING)
     private State state;
 

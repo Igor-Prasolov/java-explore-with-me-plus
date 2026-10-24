@@ -9,10 +9,9 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewCategoryDto { //приходит от пользователя
+public class NewCategoryDto {
 
     @NotBlank
     @Size(min = 1, max = 50)
-
     private String name;
 }

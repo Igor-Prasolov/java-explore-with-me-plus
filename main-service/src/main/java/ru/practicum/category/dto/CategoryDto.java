@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CategoryDto { // я хз надо тут аннотации или нет, нужно разбираться в контроллерах
+public class CategoryDto {
     private Long id;
     private String name;
 }

@@ -1,10 +1,14 @@
 package ru.practicum.category.dto;
 
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-public class CategoryDto { // я хз надо тут аннотации или нет, нужно разбираться в контроллерах
+@AllArgsConstructor
+@NoArgsConstructor
+public class CategoryDto {
     private Long id;
     private String name;
 }

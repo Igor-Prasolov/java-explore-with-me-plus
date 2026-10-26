@@ -52,7 +52,7 @@ public class EventServiceImpl implements EventService {
         event.setInitiator(initiator);
         event.setState(State.PENDING);
         Category category = categoryRepository.findById(newEventDto.getCategory()) // не взял из сервиса, потому что там pageable второй параметр
-                .orElseThrow(() -> new NotFoundException("Category with id=" + newEventDto.getCategory() +" not found"));
+                .orElseThrow(() -> new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found"));
         event.setCategory(category);
 
         eventRepository.save(event);
@@ -75,7 +75,7 @@ public class EventServiceImpl implements EventService {
                 .map(eventMapper::toEventShort)
                 .toList();
     }
-    
+
     @Override
     public EventFullDto findEventByInitiatorId(Long initiatorId, Long eventId) {
         userService.getUserById(initiatorId);
@@ -91,6 +91,5 @@ public class EventServiceImpl implements EventService {
 
         return eventMapper.toEventFullDto(event);
     }
-    
 
 }

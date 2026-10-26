@@ -1,7 +1,6 @@
 package ru.practicum.request.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import ru.practicum.event.entity.Event;

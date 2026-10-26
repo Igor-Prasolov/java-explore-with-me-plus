@@ -11,6 +11,4 @@ import java.util.List;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findCategoryById(Long id, Pageable pageable);
-
-    Integer deleteCategoryById(Long id);
 }

@@ -29,7 +29,7 @@ public class Compilation {
     // Создаем потому что у подборки может быть много собитий, как и наборот
     // связующая таблица с двумя FK ключами на таблицу эту и таблицу с событиями
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "compilations_events",
+    @JoinTable(name = "compilation_events",
     joinColumns = @JoinColumn(name = "compilation_id"),
     inverseJoinColumns = @JoinColumn(name = "event_id"))
     private Set<Event> events;

@@ -59,7 +59,7 @@ public class EventServiceImpl implements EventService {
 
         if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             log.warn("WARNING createEvent: event date must be at least 2 hours from now");
-            throw new ValidateException("For the requested operation the conditions are not met");
+            throw new IllegalArgumentException("For the requested operation the conditions are not met");
         }
 
         event.setInitiator(initiator);
@@ -241,7 +241,7 @@ public class EventServiceImpl implements EventService {
         if (updateEventUserRequest.getEventDate() != null) {
             if (updateEventUserRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
                 log.warn("WARNING updateEvent: Event date must be at least 2 hours from now");
-                throw new ValidateException("Event date must be at least 2 hours from now");
+                throw new IllegalArgumentException("Event date must be at least 2 hours from now");
             }
             event.setEventDate(updateEventUserRequest.getEventDate());
         }
@@ -301,7 +301,7 @@ public class EventServiceImpl implements EventService {
         if (updateEventAdminRequest.getEventDate() != null) {
             if (updateEventAdminRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                 log.warn("WARNING updateAdminEvent: updateEvent date must be at least 1 hours from now");
-                throw new ValidateException("Event date must be at least 1 hours from now");
+                throw new IllegalArgumentException("Event date must be at least 1 hours from now");
             }
             event.setEventDate(updateEventAdminRequest.getEventDate());
         }

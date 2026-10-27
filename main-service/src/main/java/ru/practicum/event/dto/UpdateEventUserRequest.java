@@ -2,6 +2,7 @@ package ru.practicum.event.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import ru.practicum.event.entity.StateActionForUser;
@@ -26,7 +27,10 @@ public class UpdateEventUserRequest { // нет аннотаций на нул �
     private Location location;
 
     private Boolean paid;
+
+    @PositiveOrZero
     private Integer participantLimit;
+
     private Boolean requestModeration;
     private StateActionForUser stateAction;
 

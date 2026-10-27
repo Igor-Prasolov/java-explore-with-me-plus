@@ -50,18 +50,26 @@ public class EventServiceImpl implements EventService {
     public EventFullDto createEvent(NewEventDto newEventDto, Long initiatorId) {
 
         User initiator = userRepository.findById(initiatorId)
-                .orElseThrow(() -> new NotFoundException("WARNING createEvent: User with id =" + initiatorId + " not found"));
+                .orElseThrow(() -> {
+                    log.warn("WARNING createEvent: user not found");
+                    return new NotFoundException("User with id =" + initiatorId + " not found");
+                });
 
         Event event = eventMapper.toEvent(newEventDto);
 
         if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidateException("WARNING createEvent: For the requested operation the conditions are not met");
+            log.warn("WARNING createEvent: event date must be at least 2 hours from now");
+            throw new ValidateException("For the requested operation the conditions are not met");
         }
 
         event.setInitiator(initiator);
         event.setState(State.PENDING);
         Category category = categoryRepository.findById(newEventDto.getCategory())
-                .orElseThrow(() -> new NotFoundException("WARNING createEvent: Category with id=" + newEventDto.getCategory() + " not found"));
+                .orElseThrow(() -> {
+                    log.warn("WARNING createEvent: category not found");
+                    return new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found");
+                });
+
         event.setCategory(category);
 
         eventRepository.save(event);
@@ -95,7 +103,6 @@ public class EventServiceImpl implements EventService {
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
-
         return eventShortDtoList;
     }
 
@@ -105,7 +112,8 @@ public class EventServiceImpl implements EventService {
         Event event = findEventById(eventId);
 
         if (!event.getInitiator().getId().equals(initiatorId)) {
-            throw new NotFoundException("WARNING findEventByInitiatorId: Event with id=" + eventId + " not found");
+            log.warn("WARNING findEventByInitiatorId: user is not the initiator");
+            throw new NotFoundException("Event with id=" + eventId + " not found");
         }
 
         EventFullDto eventFullDto = eventMapper.toEventFullDto(event);

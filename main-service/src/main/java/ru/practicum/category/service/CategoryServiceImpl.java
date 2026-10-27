@@ -2,6 +2,7 @@ package ru.practicum.category.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,10 +13,12 @@ import ru.practicum.category.entity.Category;
 import ru.practicum.category.mapper.CategoryMapper;
 import ru.practicum.category.repository.CategoryRepository;
 import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exception.ErrorMessages;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidateException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -45,24 +48,29 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto getCategoryById(Long categoryId, Pageable pageable) {
-        List<Category> categories = categoryRepository.findCategoryById(categoryId, pageable);
-
-        if (categories.isEmpty()) {
-            throw new NotFoundException("Category with id = " + categoryId + " not found");
-        }
         log.info("Retrieving category with id = {}", categoryId);
-        return categoryMapper.toCategoryDto(categories.getFirst());
+
+        Optional<Category> category = categoryRepository.findById(categoryId);
+
+        return categoryMapper.toCategoryDto(category.orElseThrow(() ->
+                NotFoundException.of(Category.class, categoryId)
+        ));
     }
 
     @Override
+    @Transactional
     public CategoryDto updateCategoryById(Long categoryId, NewCategoryDto newCategoryDto) {
         Category existingCategory = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new NotFoundException("Category with id = " + categoryId + " not found"));
+                .orElseThrow(() -> NotFoundException.of(Category.class, categoryId));
         log.info("Updating category with id = {}", categoryId);
 
-        if (newCategoryDto.getName() != null && !newCategoryDto.getName().isBlank()) {
-            existingCategory.setName(newCategoryDto.getName());
+        if (newCategoryDto.getName().equals(existingCategory.getName())) {
+            throw new DataIntegrityViolationException(
+                    ErrorMessages.INTEGRITY_VIOLATION.format(Category.class.getSimpleName() + " with name "
+                            + newCategoryDto.getName())
+            );
         }
+        existingCategory.setName(newCategoryDto.getName());
 
         return categoryMapper.toCategoryDto(categoryRepository.save(existingCategory));
     }
@@ -72,11 +80,11 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategoryById(Long categoryId) {
 
         if (!categoryRepository.existsById(categoryId)) {
-            throw new NotFoundException("Категория с id = " + categoryId + " не найдена");
+            throw NotFoundException.of(Category.class, categoryId);
         }
 
         if (eventRepository.existsByCategoryId(categoryId)) {
-            throw new ValidateException("The category is not empty");
+            throw ValidateException.of(ErrorMessages.CATEGORY_NOT_EMPTY);
         }
 
         categoryRepository.deleteById(categoryId);

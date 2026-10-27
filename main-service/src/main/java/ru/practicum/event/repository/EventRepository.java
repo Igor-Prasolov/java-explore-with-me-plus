@@ -39,4 +39,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findPublicEventByParam(State state, String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
                                        LocalDateTime rangeEnd, Boolean onlyAvailable, RequestStatus confirmedStatus, Pageable pageable);
 
+    boolean existsByCategoryId(Long categoryId);
 }

@@ -36,7 +36,6 @@ public class AdminEventsController {
                                                     @RequestParam(defaultValue = "10", required = false) @Min(1) int size) {
         log.info("call findEventAdminByParam from the controller");
 
-        
         return eventService.findEventAdminByParam(users, states, categories, rangeStart, rangeEnd, from, size);
     }
 

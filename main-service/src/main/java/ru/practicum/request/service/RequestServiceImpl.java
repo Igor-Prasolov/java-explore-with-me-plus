@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.event.entity.Event;
 import ru.practicum.event.entity.State;
 import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exception.ErrorMessages;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidateException;
 import ru.practicum.request.dto.EventRequestStatusUpdateRequest;
@@ -50,20 +51,20 @@ public class RequestServiceImpl implements RequestService {
         Event event = getEventOrThrow(eventId);
 
         if (requestRepository.existsByRequesterIdAndEventId(userId, eventId)) {
-            throw new ValidateException("User with id=" + userId + " has already sent a request to event id=" + eventId);
+            throw ValidateException.of(ErrorMessages.REQUEST_ALREADY_SENT, userId, eventId);
         }
 
         if (event.getInitiator().getId().equals(userId)) {
-            throw new ValidateException("Event initiator cannot participate in their own event");
+            throw ValidateException.of(ErrorMessages.INITIATOR_CANNOT_PARTICIPATE);
         }
 
         if (!State.PUBLISHED.equals(event.getState())) {
-            throw new ValidateException("Cannot participate in an unpublished event");
+            throw ValidateException.of(ErrorMessages.UNPUBLISHED_EVENT);
         }
 
         long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
         if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-            throw new ValidateException("The participant limit has been reached");
+            throw ValidateException.of(ErrorMessages.PARTICIPANT_LIMIT_REACHED);
         }
 
         RequestStatus status = RequestStatus.PENDING;
@@ -88,7 +89,7 @@ public class RequestServiceImpl implements RequestService {
         checkUserExists(userId);
 
         Request request = requestRepository.findByIdAndRequesterId(requestId, userId)
-                .orElseThrow(() -> new NotFoundException("Request with id=" + requestId + " for user id=" + userId + "was not found"));
+                .orElseThrow(() -> NotFoundException.of(Request.class, requestId));
 
         request.setStatus(RequestStatus.CANCELED);
         Request updated = requestRepository.save(request);
@@ -102,7 +103,7 @@ public class RequestServiceImpl implements RequestService {
         Event event = getEventOrThrow(eventId);
 
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ValidateException("User with id=" + userId + " is not the initiator of event id=" + eventId);
+            throw ValidateException.of(ErrorMessages.NOT_EVENT_INITIATOR, userId, eventId);
         }
 
         List<Request> requests = requestRepository.findAllByEventId(eventId);
@@ -118,7 +119,7 @@ public class RequestServiceImpl implements RequestService {
         Event event = getEventOrThrow(eventId);
 
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ValidateException("User with id=" + userId + " is not the initiator of event id=" + eventId);
+            throw ValidateException.of(ErrorMessages.NOT_EVENT_INITIATOR, userId, eventId);
         }
 
         List<ParticipationRequestDto> confirmedList = new ArrayList<>();
@@ -132,14 +133,14 @@ public class RequestServiceImpl implements RequestService {
         if (StatusForUpdateRequest.CONFIRMED.equals(updateRequest.getStatus())
                 && event.getParticipantLimit() > 0
                 && confirmedCount >= event.getParticipantLimit()) {
-            throw new ValidateException("The participant limit has been reached");
+            throw ValidateException.of(ErrorMessages.PARTICIPANT_LIMIT_REACHED);
         }
 
         List<Request> requests = requestRepository.findAllByEventIdAndIdIn(eventId, updateRequest.getRequestIds());
 
         for (Request request : requests) {
             if (!RequestStatus.PENDING.equals(request.getStatus())) {
-                throw new ValidateException("Status can only be changed for requests with PENDING status");
+                throw ValidateException.of(ErrorMessages.REQUEST_NOT_PENDING);
             }
 
             if (StatusForUpdateRequest.CONFIRMED.equals(updateRequest.getStatus())) {
@@ -173,17 +174,17 @@ public class RequestServiceImpl implements RequestService {
 
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User with id=" + userId + " was not found"));
+                .orElseThrow(() -> NotFoundException.of(User.class, userId));
     }
 
     private void checkUserExists(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw new NotFoundException("User with id=" + userId + " was not found");
+            throw NotFoundException.of(User.class, userId);
         }
     }
 
     private Event getEventOrThrow(Long eventId) {
         return eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+                .orElseThrow(() -> NotFoundException.of(Event.class, eventId));
     }
 }

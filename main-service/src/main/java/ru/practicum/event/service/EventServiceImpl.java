@@ -15,6 +15,7 @@ import ru.practicum.event.entity.Event;
 import ru.practicum.event.entity.State;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exception.ErrorMessages;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidateException;
 import ru.practicum.page.OffsetPageRequest;
@@ -52,7 +53,7 @@ public class EventServiceImpl implements EventService {
         User initiator = userRepository.findById(initiatorId)
                 .orElseThrow(() -> {
                     log.warn("WARNING createEvent: user not found");
-                    return new NotFoundException("User with id =" + initiatorId + " not found");
+                    return NotFoundException.of(User.class, initiatorId);
                 });
 
         Event event = eventMapper.toEvent(newEventDto);
@@ -67,7 +68,7 @@ public class EventServiceImpl implements EventService {
         Category category = categoryRepository.findById(newEventDto.getCategory())
                 .orElseThrow(() -> {
                     log.warn("WARNING createEvent: category not found");
-                    return new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found");
+                    return NotFoundException.of(Category.class, newEventDto.getCategory());
                 });
 
         event.setCategory(category);
@@ -113,7 +114,7 @@ public class EventServiceImpl implements EventService {
 
         if (!event.getInitiator().getId().equals(initiatorId)) {
             log.warn("WARNING findEventByInitiatorId: user is not the initiator");
-            throw new NotFoundException("Event with id=" + eventId + " not found");
+            throw NotFoundException.of(Event.class, eventId);
         }
 
         EventFullDto eventFullDto = eventMapper.toEventFullDto(event);
@@ -210,7 +211,7 @@ public class EventServiceImpl implements EventService {
         Event event = findEventById(eventId);
         if (!event.getState().equals(State.PUBLISHED)) {
             log.warn("WARNING findPublicEventById: Event state: {}", event.getState());
-            throw new NotFoundException("Event with id=" + eventId + " not found");
+            throw NotFoundException.of(Event.class, eventId);
         }
         EventFullDto eventFullDto = eventMapper.toEventFullDto(event);
         eventFullDto.setConfirmedRequests(requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED));
@@ -229,12 +230,12 @@ public class EventServiceImpl implements EventService {
 
         if (!event.getInitiator().getId().equals(initiatorId)) {
             log.warn("WARNING updateEvent: Only the initiator can change the event.");
-            throw new NotFoundException("Event with id=" + eventId + " not found");
+            throw NotFoundException.of(Event.class, eventId);
         }
 
         if (!event.getState().equals(State.CANCELED) && !event.getState().equals(State.PENDING)) {
             log.warn("WARNING updateEvent: Events can only be modified if they have the cancelled and pending status");
-            throw new ValidateException("Only pending or canceled events can be changed");
+            throw ValidateException.of(ErrorMessages.EVENT_NOT_PENDING_OR_CANCELED);
         }
 
 
@@ -249,7 +250,7 @@ public class EventServiceImpl implements EventService {
             Category category = categoryRepository.findById(updateEventUserRequest.getCategory())
                     .orElseThrow(() -> {
                         log.warn("WARNING updateEvent: category not found");
-                        return new NotFoundException("Category with id=" + updateEventUserRequest.getCategory() + " not found");
+                        return NotFoundException.of(Category.class, updateEventUserRequest.getCategory());
                     });
             event.setCategory(category);
         }
@@ -309,7 +310,7 @@ public class EventServiceImpl implements EventService {
             Category category = categoryRepository.findById(updateEventAdminRequest.getCategory())
                     .orElseThrow(() -> {
                         log.warn("WARNING updateAdminEvent: category not found");
-                        return new NotFoundException("Category with id=" + updateEventAdminRequest.getCategory() + " not found");
+                        return NotFoundException.of(Category.class, updateEventAdminRequest.getCategory());
                     });
             event.setCategory(category);
         }
@@ -319,11 +320,11 @@ public class EventServiceImpl implements EventService {
                 case PUBLISH_EVENT -> {
                     if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                         log.warn("WARNING updateAdminEvent: Event date must be at least 1 hours from now");
-                        throw new ValidateException("Event date must be at least 1 hours from now");
+                        throw ValidateException.of(ErrorMessages.EVENT_DATE_TOO_SOON);
                     }
                     if (!event.getState().equals(State.PENDING)) {
                         log.warn("WARNING updateAdminEvent: Cannot publish the event because it's not in the right state: {}", event.getState());
-                        throw new ValidateException("Cannot publish the event because it's not in the right state: " + event.getState());
+                        throw ValidateException.of(ErrorMessages.CANNOT_PUBLISH_EVENT, event.getState());
                     }
                     event.setState(State.PUBLISHED);
                     event.setPublishedOn(LocalDateTime.now());
@@ -331,7 +332,7 @@ public class EventServiceImpl implements EventService {
                 case REJECT_EVENT -> {
                     if (event.getState().equals(State.PUBLISHED)) {
                         log.warn("WARNING updateAdminEvent: Cannot reject the event because it's already published");
-                        throw new ValidateException("Cannot reject the event because it's already published");
+                        throw ValidateException.of(ErrorMessages.CANNOT_REJECT_PUBLISHED_EVENT);
                     }
                     event.setState(State.CANCELED);
                 }
@@ -377,7 +378,7 @@ public class EventServiceImpl implements EventService {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> {
                     log.warn("WARNING Repository findEventById: event not found");
-                    return new NotFoundException("Event with id=" + eventId + " not found");
+                    return NotFoundException.of(Event.class, eventId);
                 });
     }
 

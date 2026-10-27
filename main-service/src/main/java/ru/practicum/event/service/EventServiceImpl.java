@@ -301,7 +301,7 @@ public class EventServiceImpl implements EventService {
         if (updateEventAdminRequest.getEventDate() != null) {
             if (updateEventAdminRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                 log.warn("WARNING updateAdminEvent: updateEvent date must be at least 1 hours from now");
-                throw new ValidateException("Event date must be at least 1 hours from now");
+                throw new IllegalArgumentException("Event date must be at least 1 hours from now");
             }
             event.setEventDate(updateEventAdminRequest.getEventDate());
         }

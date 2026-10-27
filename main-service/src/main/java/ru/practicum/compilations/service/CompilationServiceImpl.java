@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.compilations.dto.CompilationDto;
 import ru.practicum.compilations.dto.NewCompilationDto;
+import ru.practicum.compilations.dto.UpdateCompilationRequest;
 import ru.practicum.compilations.entity.Compilation;
 import ru.practicum.compilations.mapper.CompilationMapper;
 import ru.practicum.compilations.repository.CompilationRepository;
@@ -41,7 +42,7 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public CompilationDto getCompilationById(Long compId) {
         Compilation compilation = compilationRepository.findCompilationById(compId)
-                .orElseThrow(() -> new NotFoundException("Compilation with id = " + compId + " not found"));
+                .orElseThrow(() -> NotFoundException.of(Compilation.class, compId));
         log.info("Retrieving compilation with id = {}", compId);
         return compilationMapper.toCompilationDto(compilation);
     }
@@ -67,11 +68,11 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     @Transactional
-    public CompilationDto updateCompilation(Long compId, NewCompilationDto compilationDto) {
+    public CompilationDto updateCompilation(Long compId, UpdateCompilationRequest compilationDto) {
         log.info("Updating compilation with id = {}", compId);
 
         Compilation compilation = compilationRepository.findCompilationById(compId)
-                .orElseThrow(() -> new NotFoundException("Compilation with id = " + compId + " not found"));
+                .orElseThrow(() -> NotFoundException.of(Compilation.class, compId));
 
         if (compilationDto.getTitle() != null && !compilationDto.getTitle().isBlank()) {
             compilation.setTitle(compilationDto.getTitle());
@@ -93,7 +94,7 @@ public class CompilationServiceImpl implements CompilationService {
     @Transactional
     public void deleteCompilation(Long compilationId) {
         if (!compilationRepository.existsById(compilationId)) {
-            throw new NotFoundException("Compilation with id = " + compilationId + " not found");
+            throw NotFoundException.of(Compilation.class, compilationId);
         }
         log.info("Deleting compilation with id = {}", compilationId);
         compilationRepository.deleteById(compilationId);

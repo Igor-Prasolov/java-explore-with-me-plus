@@ -64,12 +64,6 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> NotFoundException.of(Category.class, categoryId));
         log.info("Updating category with id = {}", categoryId);
 
-        if (newCategoryDto.getName().equals(existingCategory.getName())) {
-            throw new DataIntegrityViolationException(
-                    ErrorMessages.INTEGRITY_VIOLATION.format(Category.class.getSimpleName() + " with name "
-                            + newCategoryDto.getName())
-            );
-        }
         existingCategory.setName(newCategoryDto.getName());
 
         return categoryMapper.toCategoryDto(categoryRepository.save(existingCategory));

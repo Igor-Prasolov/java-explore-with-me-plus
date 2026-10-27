@@ -11,7 +11,9 @@ import ru.practicum.category.dto.NewCategoryDto;
 import ru.practicum.category.entity.Category;
 import ru.practicum.category.mapper.CategoryMapper;
 import ru.practicum.category.repository.CategoryRepository;
+import ru.practicum.event.repository.EventRepository;
 import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidateException;
 
 import java.util.List;
 
@@ -23,6 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final EventRepository eventRepository;
 
     @Override
     @Transactional
@@ -42,10 +45,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto getCategoryById(Long categoryId, Pageable pageable) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new NotFoundException("Category with id = " + categoryId + " not found"));
+        List<Category> categories = categoryRepository.findCategoryById(categoryId, pageable);
+
+        if (categories.isEmpty()) {
+            throw new NotFoundException("Category with id = " + categoryId + " not found");
+        }
         log.info("Retrieving category with id = {}", categoryId);
-        return categoryMapper.toCategoryDto(category);
+        return categoryMapper.toCategoryDto(categories.getFirst());
     }
 
     @Override
@@ -65,14 +71,15 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void deleteCategoryById(Long categoryId) {
 
-
-        // Нужна проверка на события, которые ссылаются на эту категорию, дописать после создания EventService
-
-        log.info("Deleting category with id = {}", categoryId);
-        Integer deletedCount = categoryRepository.deleteCategoryById(categoryId);
-        if (deletedCount == 0) {
-            throw new NotFoundException("Category with id = " + categoryId + " not found");
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new NotFoundException("Категория с id = " + categoryId + " не найдена");
         }
+
+        if (eventRepository.existsByCategoryId(categoryId)) {
+            throw new ValidateException("The category is not empty");
+        }
+
+        categoryRepository.deleteById(categoryId);
     }
 
 }

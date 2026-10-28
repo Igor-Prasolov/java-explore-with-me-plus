@@ -26,17 +26,17 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     //для публичного
     @Query("SELECT e FROM Event AS e WHERE e.state = :state AND " +
-            "(:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
+            "(:text = '%%' OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%')) " +
             "OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%'))) AND " +
-            "(:categories IS NULL OR e.category.id IN :categories) AND " +
-            "(:paid IS NULL OR e.paid = :paid) AND " +
-            "(:rangeStart IS NULL OR e.eventDate >= :rangeStart) AND " +
-            "(:rangeEnd IS NULL OR e.eventDate <= :rangeEnd) AND " +
+            "(e.category.id IN :categories) AND " +
+            "(e.paid IN :paidValues) AND " +
+            "(e.eventDate >= :rangeStart) AND " +
+            "(e.eventDate <= :rangeEnd) AND " +
             "(:onlyAvailable = false OR e.participantLimit = 0 OR " +
             "e.participantLimit > (SELECT COUNT(r) FROM Request AS r " +
             "WHERE r.event.id = e.id AND r.status = :confirmedStatus)) " +
             "ORDER BY e.eventDate")
-    List<Event> findPublicEventByParam(State state, String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
+    List<Event> findPublicEventByParam(State state, String text, List<Long> categories, List<Boolean> paidValues, LocalDateTime rangeStart,
                                        LocalDateTime rangeEnd, Boolean onlyAvailable, RequestStatus confirmedStatus, Pageable pageable);
 
     boolean existsByCategoryId(Long categoryId);

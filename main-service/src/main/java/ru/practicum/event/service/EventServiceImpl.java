@@ -130,9 +130,47 @@ public class EventServiceImpl implements EventService {
     public List<EventFullDto> findEventAdminByParam(List<Long> users, List<State> states, List<Long> categories,
                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, int from, int size) {
 
+        if (rangeStart == null) {
+            rangeStart = LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+        if (rangeEnd == null) {
+            rangeEnd = LocalDateTime.of(2100, 1, 1, 0, 0);
+        }
+
         Pageable pageable = new OffsetPageRequest(from, size);
 
-        List<Event> eventList = eventRepository.findEventByParam(users, states, categories,
+        List<Long> userdIdList;
+        if (users == null || users.isEmpty()) {
+            userdIdList = userRepository.findAll().stream()
+                    .map(User::getId)
+                    .toList();
+        } else {
+            userdIdList = users;
+        }
+        if (userdIdList.isEmpty()) {
+            return List.of();
+        }
+
+        List<State> statesList;
+        if (states == null || states.isEmpty()) {
+            statesList = List.of(State.values());
+        } else {
+            statesList = states;
+        }
+
+        List<Long> categoryIdList;
+        if (categories == null || categories.isEmpty()) {
+            categoryIdList = categoryRepository.findAll().stream()
+                    .map(Category::getId)
+                    .toList();
+        } else {
+            categoryIdList = categories;
+        }
+        if (categoryIdList.isEmpty()) {
+            return List.of();
+        }
+
+        List<Event> eventList = eventRepository.findEventByParam(userdIdList, statesList, categoryIdList,
                 rangeStart, rangeEnd, pageable);
 
         List<EventFullDto> eventFullDtoList = eventList.stream()

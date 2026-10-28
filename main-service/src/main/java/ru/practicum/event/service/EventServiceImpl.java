@@ -163,13 +163,36 @@ public class EventServiceImpl implements EventService {
                 throw new IllegalArgumentException("rangeEnd must not be before rangeStart");
             }
         }
-
-        if (rangeStart == null && rangeEnd == null) {
+        if (rangeStart == null) {
             rangeStart = LocalDateTime.now();
         }
+        if (rangeEnd == null) {
+            rangeEnd = LocalDateTime.of(2100, 1, 1, 0, 0);
+        }
+
+        if (text == null) {
+            text = "%%";
+        }
+
+        List<Long> categoryIdList;
+        if (categories == null || categories.isEmpty()) {
+            categoryIdList = categoryRepository.findAll().stream()
+                    .map(Category::getId)
+                    .toList();
+        } else {
+            categoryIdList = categories;
+        }
+        if (categoryIdList.isEmpty()) {
+            return List.of();
+        }
+
+        List<Boolean> paidValues = paid == null
+                ? List.of(true, false)
+                : List.of(paid);
+
 
         Pageable pageable = new OffsetPageRequest(from, size);
-        List<Event> eventList = eventRepository.findPublicEventByParam(State.PUBLISHED, text, categories, paid,
+        List<Event> eventList = eventRepository.findPublicEventByParam(State.PUBLISHED, text, categoryIdList, paidValues,
                 rangeStart, rangeEnd, onlyAvailable, RequestStatus.CONFIRMED, pageable);
 
         List<EventShortDto> eventShortDtoList = eventList.stream()

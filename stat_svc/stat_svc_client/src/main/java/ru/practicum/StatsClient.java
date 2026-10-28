@@ -23,11 +23,9 @@ import java.util.List;
 public class StatsClient {
 
     private final RestTemplate restTemplate;
-    private final String serverUrl;
 
     @Autowired
     public StatsClient(@Value("${stats-server.url}") String serverUrl, RestTemplateBuilder builder) {
-        this.serverUrl = serverUrl;
         this.restTemplate = (builder
                 .uriTemplateHandler(new DefaultUriBuilderFactory(serverUrl))
                 .requestFactory(() -> new HttpComponentsClientHttpRequestFactory())
@@ -44,8 +42,7 @@ public class StatsClient {
         String strStart = formatter.format(start);
         String strEnd = formatter.format(end);
 
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(serverUrl)
-                .path("/stats")
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/stats")
                 .queryParam("start", strStart)
                 .queryParam("end", strEnd)
                 .queryParam("unique", unique);

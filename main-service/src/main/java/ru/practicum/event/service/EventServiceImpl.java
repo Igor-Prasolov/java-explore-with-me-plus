@@ -98,9 +98,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1 в выхове репозитория
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventShortDto ev : eventShortDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -130,9 +131,47 @@ public class EventServiceImpl implements EventService {
     public List<EventFullDto> findEventAdminByParam(List<Long> users, List<State> states, List<Long> categories,
                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, int from, int size) {
 
+        if (rangeStart == null) {
+            rangeStart = LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+        if (rangeEnd == null) {
+            rangeEnd = LocalDateTime.of(2100, 1, 1, 0, 0);
+        }
+
         Pageable pageable = new OffsetPageRequest(from, size);
 
-        List<Event> eventList = eventRepository.findEventByParam(users, states, categories,
+        List<Long> userdIdList;
+        if (users == null || users.isEmpty()) {
+            userdIdList = userRepository.findAll().stream()
+                    .map(User::getId)
+                    .toList();
+        } else {
+            userdIdList = users;
+        }
+        if (userdIdList.isEmpty()) {
+            return List.of();
+        }
+
+        List<State> statesList;
+        if (states == null || states.isEmpty()) {
+            statesList = List.of(State.values());
+        } else {
+            statesList = states;
+        }
+
+        List<Long> categoryIdList;
+        if (categories == null || categories.isEmpty()) {
+            categoryIdList = categoryRepository.findAll().stream()
+                    .map(Category::getId)
+                    .toList();
+        } else {
+            categoryIdList = categories;
+        }
+        if (categoryIdList.isEmpty()) {
+            return List.of();
+        }
+
+        List<Event> eventList = eventRepository.findEventByParam(userdIdList, statesList, categoryIdList,
                 rangeStart, rangeEnd, pageable);
 
         List<EventFullDto> eventFullDtoList = eventList.stream()
@@ -144,9 +183,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1 в вызове репозитория
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventFullDto ev : eventFullDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -204,9 +244,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventShortDto ev : eventShortDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -440,6 +481,23 @@ public class EventServiceImpl implements EventService {
         }
 
         return result;
+    }
+
+    private Map<Long, Long> getConfirmedRequestsForEvents(List<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> confirmedRequestList = requestRepository.countByEventIdsAndStatus(eventIds, RequestStatus.CONFIRMED);
+
+        Map<Long, Long> res = new HashMap<>();
+
+        for (Object[] row : confirmedRequestList) {
+            Long eventId = (Long) row[0];
+            Long count = (Long) row[1];
+            res.put(eventId, count);
+        }
+
+        return res;
     }
 
 }

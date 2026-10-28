@@ -16,11 +16,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     // для админа
     @Query("SELECT e FROM Event AS e WHERE " +
-            "(:users IS NULL OR e.initiator.id IN :users) AND " +
-            "(:states IS NULL OR e.state IN :states) AND " +
-            "(:categories IS NULL OR e.category.id IN :categories) AND " +
-            "(:rangeStart IS NULL OR e.eventDate >= :rangeStart) AND " +
-            "(:rangeEnd IS NULL OR e.eventDate <= :rangeEnd)")
+            "(e.initiator.id IN :users) AND " +
+            "(e.state IN :states) AND " +
+            "(e.category.id IN :categories) AND " +
+            "(e.eventDate >= :rangeStart) AND " +
+            "(e.eventDate <= :rangeEnd) " +
+            "ORDER BY e.id")
     List<Event> findEventByParam(List<Long> users, List<State> states, List<Long> categories, LocalDateTime rangeStart,
                                  LocalDateTime rangeEnd, Pageable pageable);
 

@@ -1,0 +1,38 @@
+package ru.practicum.request.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.event.entity.Event;
+import ru.practicum.user.entity.User;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "requests", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_request_event_requester", columnNames = {"event_id", "requester_id"})
+})
+public class Request {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
+
+    @ManyToOne
+    @JoinColumn(name = "requester_id", nullable = false)
+    private User requester;
+
+    @Column(name = "created")
+    private LocalDateTime created;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 50)
+    private RequestStatus status;
+
+}

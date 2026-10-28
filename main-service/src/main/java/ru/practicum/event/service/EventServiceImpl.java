@@ -98,9 +98,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1 в выхове репозитория
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventShortDto ev : eventShortDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -182,9 +183,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1 в вызове репозитория
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventFullDto ev : eventFullDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -242,9 +244,10 @@ public class EventServiceImpl implements EventService {
                 .toList();
         Map<Long, Long> views = getViewsForEvents(eventIds);
 
-        // N+1
+        Map<Long, Long> confirmed = getConfirmedRequestsForEvents(eventIds);
+
         for (EventShortDto ev : eventShortDtoList) {
-            ev.setConfirmedRequests(requestRepository.countByEventIdAndStatus(ev.getId(), RequestStatus.CONFIRMED));
+            ev.setConfirmedRequests(confirmed.getOrDefault(ev.getId(), 0L));
             ev.setViews(views.getOrDefault(ev.getId(), 0L));
         }
 
@@ -478,6 +481,23 @@ public class EventServiceImpl implements EventService {
         }
 
         return result;
+    }
+
+    private Map<Long, Long> getConfirmedRequestsForEvents(List<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> confirmedRequestList = requestRepository.countByEventIdsAndStatus(eventIds, RequestStatus.CONFIRMED);
+
+        Map<Long, Long> res = new HashMap<>();
+
+        for (Object[] row : confirmedRequestList) {
+            Long eventId = (Long) row[0];
+            Long count = (Long) row[1];
+            res.put(eventId, count);
+        }
+
+        return res;
     }
 
 }

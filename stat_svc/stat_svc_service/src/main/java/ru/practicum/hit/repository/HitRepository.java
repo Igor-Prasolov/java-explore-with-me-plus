@@ -18,4 +18,5 @@ public interface HitRepository extends JpaRepository<Hit, Long> {
             " AND (?3 IS NULL OR h.uri in ?3) GROUP BY h.app, h.uri ORDER BY COUNT(DISTINCT h.ip) DESC")
     List<ViewStatsDto> findUniqueStats(LocalDateTime start, LocalDateTime end, List<String> uris);
 
+
 }

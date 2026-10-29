@@ -59,7 +59,6 @@ docker compose up --build
 - RestTemplate (клиент для сервиса статистики)
 - Docker, Docker Compose
 - Checkstyle
-- Postman (автотесты API), GitHub Actions (CI)
 
 ## Схема базы данных
 ![Схема базы данных](docs/schema.png)

@@ -22,6 +22,9 @@ public class HitServiceImpl implements HitService {
 
     @Override
     public List<ViewStatsDto> findStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("Start date must not be after end date");
+        }
         if (unique) {
             return hitRepository.findUniqueStats(start, end, uris);
         }

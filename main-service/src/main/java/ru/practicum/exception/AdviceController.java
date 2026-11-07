@@ -35,6 +35,7 @@ public class AdviceController extends ResponseEntityExceptionHandler {
     private static final String REASON_INTEGRITY = "Integrity constraint has been violated.";
     private static final String REASON_CONDITIONS = "For the requested operation the conditions are not met.";
     private static final String REASON_INTERNAL = "Unexpected error.";
+    private static final String REASON_FORBIDDEN = "Access denied.";
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(NotFoundException e) {
@@ -69,6 +70,12 @@ public class AdviceController extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException e) {
         log.warn("Incorrect request: {}", e.getMessage());
         return response(HttpStatus.BAD_REQUEST, REASON_BAD_REQUEST, e.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(ForbiddenException e) {
+        log.warn("Access denied: {}", e.getMessage());
+        return response(HttpStatus.FORBIDDEN, REASON_FORBIDDEN, e.getMessage(), List.of());
     }
 
     @ExceptionHandler(Exception.class)

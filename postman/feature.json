@@ -1,0 +1,474 @@
+{
+  "info": {
+    "name": "Проверка комментариев и негативных сценариев",
+    "description": "Проверка комментариев и негативных сценариев.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "missingId",
+      "value": "9223372036854775807"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.info.requestName === '[201] Создать автора') {",
+          "  pm.collectionVariables.set('run', Date.now().toString());",
+          "  pm.collectionVariables.set('eventDate', new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 19).replace('T', ' '));",
+          "  ['authorId', 'otherId', 'categoryId', 'eventId', 'pendingId', 'commentId', 'adminCommentId', 'createdOn'].forEach(k => pm.collectionVariables.unset(k));",
+          "}",
+          "pm.variables.set('longText', 'a'.repeat(2001));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const name = pm.info.requestName;",
+          "const expected = Number(name.match(/^\\[(\\d+)\\]/)[1]);",
+          "pm.test('HTTP ' + expected, () => pm.response.to.have.status(expected));",
+          "",
+          "let body;",
+          "try { body = pm.response.json(); } catch (e) {}",
+          "",
+          "const datePattern = /^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/;",
+          "",
+          "const saves = {",
+          "  '[201] Создать автора': ['authorId', 'id'],",
+          "  '[201] Создать другого пользователя': ['otherId', 'id'],",
+          "  '[201] Создать категорию': ['categoryId', 'id'],",
+          "  '[201] Создать событие': ['eventId', 'id'],",
+          "  '[201] Создать неопубликованное событие': ['pendingId', 'id'],",
+          "  '[201] Создать комментарий': ['commentId', 'commentId'],",
+          "  '[201] Создать комментарий для удаления админом': ['adminCommentId', 'commentId']",
+          "};",
+          "if (pm.response.code === expected && saves[name] && body) {",
+          "  const [variable, field] = saves[name];",
+          "  pm.test('В ответе есть ID', () => pm.expect(body[field]).to.be.a('number'));",
+          "  if (body[field] !== undefined) pm.collectionVariables.set(variable, body[field]);",
+          "}",
+          "",
+          "if (expected >= 400) {",
+          "  pm.test('Ответ содержит описание ошибки', () => {",
+          "    pm.expect(body).to.be.an('object');",
+          "    ['status', 'reason', 'message', 'timestamp'].forEach(k => pm.expect(body).to.have.property(k));",
+          "  });",
+          "}",
+          "",
+          "const messages = {",
+          "  '[404] Комментарий к неопубликованному событию': 'You can only leave comments on published events',",
+          "  '[403] Чужой пользователь редактирует': 'Only the author can edit.',",
+          "  '[403] Чужой пользователь удаляет': 'Only the author can delete.'",
+          "};",
+          "if (messages[name]) {",
+          "  pm.test('Причина отказа', () => pm.expect(body.message).to.eql(messages[name]));",
+          "}",
+          "",
+          "const commentResponses = [",
+          "  '[201] Создать комментарий',",
+          "  '[200] Автор редактирует комментарий',",
+          "  '[201] Создать комментарий для удаления админом'",
+          "];",
+          "if (commentResponses.includes(name)) {",
+          "  pm.test('Формат даты: yyyy-MM-dd HH:mm:ss', () => {",
+          "    pm.expect(body.createdOn).to.be.a('string').and.match(datePattern);",
+          "  });",
+          "}",
+          "",
+          "if (name === '[201] Создать комментарий' || name === '[200] Автор редактирует комментарий') {",
+          "  pm.test('Данные комментария', () => {",
+          "    pm.expect(body.authorId).to.eql(Number(pm.collectionVariables.get('authorId')));",
+          "    pm.expect(body.eventId).to.eql(Number(pm.collectionVariables.get('eventId')));",
+          "    pm.expect(body.text).to.eql(name.startsWith('[201]') ? 'Первый комментарий' : 'Изменённый комментарий');",
+          "  });",
+          "  if (name.startsWith('[201]') && body) pm.collectionVariables.set('createdOn', body.createdOn);",
+          "  if (name.startsWith('[200]')) {",
+          "    pm.test('ID и дата создания сохранены', () => {",
+          "      pm.expect(body.commentId).to.eql(Number(pm.collectionVariables.get('commentId')));",
+          "      pm.expect(body.createdOn).to.eql(pm.collectionVariables.get('createdOn'));",
+          "    });",
+          "  }",
+          "}",
+          "",
+          "if (name === '[200] Получить комментарии события') {",
+          "  pm.test('Вернулся созданный комментарий', () => {",
+          "    pm.expect(body).to.be.an('array');",
+          "    const comment = body.find(c => c.commentId === Number(pm.collectionVariables.get('commentId')));",
+          "    pm.expect(comment).to.exist;",
+          "    pm.expect(comment.text).to.eql('Первый комментарий');",
+          "    body.forEach(c => {",
+          "      pm.expect(c.eventId).to.eql(Number(pm.collectionVariables.get('eventId')));",
+          "      pm.expect(c.createdOn).to.match(datePattern);",
+          "    });",
+          "  });",
+          "}",
+          "",
+          "if (name === '[200] Получить свои комментарии') {",
+          "  pm.test('Вернулись только свои комментарии', () => {",
+          "    pm.expect(body).to.be.an('array').and.not.empty;",
+          "    pm.expect(body.some(c => c.commentId === Number(pm.collectionVariables.get('commentId')))).to.eql(true);",
+          "    body.forEach(c => {",
+          "      pm.expect(c.authorId).to.eql(Number(pm.collectionVariables.get('authorId')));",
+          "      pm.expect(c.createdOn).to.match(datePattern);",
+          "    });",
+          "  });",
+          "}",
+          "",
+          "if (name === '[200] У другого пользователя нет комментариев') {",
+          "  pm.test('Пустой список', () => pm.expect(body).to.eql([]));",
+          "}",
+          "",
+          "if (name === '[200] Проверить удаление обоих комментариев') {",
+          "  pm.test('Удалённые комментарии отсутствуют', () => {",
+          "    pm.expect(body).to.be.an('array');",
+          "    const ids = body.map(c => c.commentId);",
+          "    pm.expect(ids).not.to.include(Number(pm.collectionVariables.get('commentId')));",
+          "    pm.expect(ids).not.to.include(Number(pm.collectionVariables.get('adminCommentId')));",
+          "  });",
+          "}",
+          "",
+          "if (expected === 204) {",
+          "  pm.test('Пустое тело ответа', () => pm.expect(pm.response.text()).to.eql(''));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Подготовка",
+      "item": [
+        {
+          "name": "[201] Создать автора",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/users",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Автор комментариев\",\"email\":\"author.{{run}}@example.com\"}"
+            }
+          }
+        },
+        {
+          "name": "[201] Создать другого пользователя",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/users",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Другой пользователь\",\"email\":\"other.{{run}}@example.com\"}"
+            }
+          }
+        },
+        {
+          "name": "[201] Создать категорию",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/categories",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Комментарии {{run}}\"}"
+            }
+          }
+        },
+        {
+          "name": "[201] Создать событие",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{otherId}}/events",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"annotation\":\"Тестовое событие для проверки комментариев\",\"category\":{{categoryId}},\"description\":\"Подробное описание события для проверки комментариев пользователей\",\"eventDate\":\"{{eventDate}}\",\"location\":{\"lat\":55.75,\"lon\":37.61},\"paid\":false,\"participantLimit\":0,\"requestModeration\":false,\"title\":\"Событие для комментариев\"}"
+            }
+          }
+        },
+        {
+          "name": "[200] Опубликовать событие",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/events/{{eventId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"stateAction\":\"PUBLISH_EVENT\"}"
+            }
+          }
+        },
+        {
+          "name": "[201] Создать неопубликованное событие",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{otherId}}/events",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"annotation\":\"Событие пока ожидает проверки администратором\",\"category\":{{categoryId}},\"description\":\"Подробное описание неопубликованного события для негативного сценария\",\"eventDate\":\"{{eventDate}}\",\"location\":{\"lat\":55.75,\"lon\":37.61},\"paid\":false,\"participantLimit\":0,\"title\":\"Неопубликованное событие\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Комментарии",
+      "item": [
+        {
+          "name": "[201] Создать комментарий",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Первый комментарий\"}"
+            }
+          }
+        },
+        {
+          "name": "[200] Получить комментарии события",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{otherId}}/events/{{eventId}}/comments"
+          }
+        },
+        {
+          "name": "[200] Получить свои комментарии",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorId}}/comments"
+          }
+        },
+        {
+          "name": "[200] У другого пользователя нет комментариев",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{otherId}}/comments"
+          }
+        },
+        {
+          "name": "[200] Автор редактирует комментарий",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/{{authorId}}/comments/{{commentId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Изменённый комментарий\"}"
+            }
+          }
+        },
+        {
+          "name": "[403] Чужой пользователь редактирует",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/{{otherId}}/comments/{{commentId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Чужая правка\"}"
+            }
+          }
+        },
+        {
+          "name": "[403] Чужой пользователь удаляет",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{otherId}}/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "[404] Комментарий к неопубликованному событию",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{pendingId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Комментарий к неопубликованному событию\"}"
+            }
+          }
+        },
+        {
+          "name": "[400] Создание с текстом из пробелов",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"   \"}"
+            }
+          }
+        },
+        {
+          "name": "[400] Создание без текста",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "[400] Создание с текстом длиннее 2000",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"{{longText}}\"}"
+            }
+          }
+        },
+        {
+          "name": "[400] Редактирование с пустым текстом",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/{{authorId}}/comments/{{commentId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"\"}"
+            }
+          }
+        },
+        {
+          "name": "[404] Создание от несуществующего пользователя",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{missingId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Корректный комментарий\"}"
+            }
+          }
+        },
+        {
+          "name": "[404] Создание к несуществующему событию",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{missingId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Корректный комментарий\"}"
+            }
+          }
+        },
+        {
+          "name": "[404] Редактирование несуществующего комментария",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/{{authorId}}/comments/{{missingId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Корректная правка\"}"
+            }
+          }
+        },
+        {
+          "name": "[404] Просмотр комментариев несуществующего события",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{missingId}}/comments"
+          }
+        },
+        {
+          "name": "[404] Просмотр комментариев несуществующего пользователя",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{missingId}}/comments"
+          }
+        },
+        {
+          "name": "[204] Автор удаляет комментарий",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{authorId}}/comments/{{commentId}}"
+          }
+        },
+        {
+          "name": "[201] Создать комментарий для удаления админом",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\":\"Комментарий для удаления администратором\"}"
+            }
+          }
+        },
+        {
+          "name": "[204] Админ удаляет комментарий",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/admin/comments/{{adminCommentId}}"
+          }
+        },
+        {
+          "name": "[200] Проверить удаление обоих комментариев",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/{{authorId}}/events/{{eventId}}/comments"
+          }
+        }
+      ]
+    }
+  ]
+}
